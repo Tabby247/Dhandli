@@ -21,8 +21,8 @@
 /* ================================
    🔧 SETTINGS (EDIT HERE)
 ================================ */
-const BIRD_WIDTH = 60;     // bird width px
-const BIRD_HEIGHT = 40;    // bird height px
+const BIRD_WIDTH = 60;
+const BIRD_HEIGHT = 40;
 const BIRD_GRAVITY = 0.6;
 const BIRD_LIFT = -10;
 
@@ -30,7 +30,7 @@ const PIPE_WIDTH = 60;
 const PIPE_GAP = 170;
 const PIPE_SPEED = 3;
 
-const HITBOX_PADDING = 6; // bigger = easier
+const HITBOX_PADDING = 6;
 const SCORE_FONT_SIZE = 28;
 
 const START_BTN_WIDTH = 220;
@@ -48,10 +48,16 @@ const DEATH_SHAKE_SPEED = 0.4;
 const DEATH_TEXT_SCALE = 0.15;
 const DEATH_TEXT_OFFSET = 40;
 
+/* ================================ */
+
 let canvas = document.getElementById("game");
 let ctx = canvas.getContext("2d");
 
-// Make canvas full screen
+// Buttons
+let startButton = { x:0, y:0, width:START_BTN_WIDTH, height:START_BTN_HEIGHT };
+let restartButton = { x:0, y:0, width:RESTART_BTN_WIDTH, height:RESTART_BTN_HEIGHT };
+
+// Resize canvas
 function resizeCanvas(){
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -79,19 +85,19 @@ let deathFrame = 0;
 ================================ */
 let birdImg = new Image(); birdImg.src="bird.png";
 let pipeImg = new Image(); pipeImg.src="pipe.png";
-
-/* ================================
-   🔧 BUTTONS
-================================ */
-let startButton = { x:0, y:0, width:START_BTN_WIDTH, height:START_BTN_HEIGHT };
-let restartButton = { x:0, y:0, width:RESTART_BTN_WIDTH, height:RESTART_BTN_HEIGHT };
+let bgImg = new Image(); bgImg.src="bg.jpeg"; // background image
 
 /* ================================
    🔧 FUNCTIONS
 ================================ */
 function resetGame(){
-  bird.y = 250; bird.velocity=0;
-  pipes = []; frame=0; score=0; deathFrame=0; gameOver=false;
+  bird.y = 250;
+  bird.velocity = 0;
+  pipes = [];
+  frame = 0;
+  score = 0;
+  deathFrame = 0;
+  gameOver = false;
 }
 
 function drawScore(){
@@ -126,11 +132,13 @@ function drawRestartButton(){
 function updatePipes(){
   if(frame % 100 === 0){
     let top=Math.random()*250+50;
-    pipes.push({x:canvas.width, top:top, bottom:top+PIPE_GAP});
+    pipes.push({x:canvas.width, top:top, bottom:top+PIPE_GAP, scored:false});
   }
 
   pipes.forEach(pipe=>{
     pipe.x -= PIPE_SPEED;
+
+    // Collision
     if(
       bird.x+HITBOX_PADDING<pipe.x+PIPE_WIDTH &&
       bird.x+bird.width-HITBOX_PADDING>pipe.x &&
@@ -160,9 +168,12 @@ function drawBird(){
 function drawDeathEffect(){
   if(!gameOver){ deathFrame=0; return; }
   deathFrame++;
+
+  // Red overlay
   ctx.fillStyle="rgba(255,0,0,0.25)";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
+  // Grow + shake bird
   let scale=Math.min(1+deathFrame*DEATH_GROW_SPEED,DEATH_MAX_SCALE);
   let bw=bird.width*scale, bh=bird.height*scale;
   let shakeX=Math.sin(deathFrame*DEATH_SHAKE_SPEED)*DEATH_SHAKE_AMOUNT;
@@ -171,25 +182,35 @@ function drawDeathEffect(){
 
   ctx.save();
   ctx.drawImage(birdImg,bx,by,bw,bh);
+
+  // Red tint on bird
   ctx.fillStyle="rgba(255,0,0,0.5)";
   ctx.globalCompositeOperation="source-atop";
   ctx.fillRect(bx,by,bw,bh);
   ctx.restore();
 
+  // Death text
   ctx.fillStyle="black";
-  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.textAlign="center";
+  ctx.textBaseline="top";
   ctx.font=(bh*DEATH_TEXT_SCALE)+"px Arial";
   ctx.fillText("MIJHAY KYUH NIKALA", bx+bw/2, by+bh+DEATH_TEXT_OFFSET);
 }
 
 /* ================================
-   🔧 INPUT HANDLING
+   🔧 INPUT
 ================================ */
 canvas.addEventListener("pointerdown", handleInput);
 document.addEventListener("keydown", function(e){
   if(e.code==="Space"){
     e.preventDefault();
-    handleInput({clientX:bird.x+bird.width/2, clientY:bird.y+bird.height/2});
+    if(!gameStarted){
+      gameStarted=true; resetGame(); return;
+    }
+    if(gameOver){
+      gameOver=false; gameStarted=false; return; // go back to start button
+    }
+    bird.velocity=BIRD_LIFT;
   }
 });
 
@@ -200,14 +221,12 @@ function handleInput(e){
 
   if(!gameStarted && x>=startButton.x && x<=startButton.x+startButton.width &&
      y>=startButton.y && y<=startButton.y+startButton.height){
-    gameStarted=true; resetGame();
-    return;
+    gameStarted=true; resetGame(); return;
   }
 
   if(gameOver && x>=restartButton.x && x<=restartButton.x+restartButton.width &&
      y>=restartButton.y && y<=restartButton.y+restartButton.height){
-    gameStarted=false; gameOver=false; resetGame();
-    return;
+    gameStarted=false; gameOver=false; resetGame(); return;
   }
 
   if(!gameOver) bird.velocity=BIRD_LIFT;
@@ -225,15 +244,18 @@ function update(){
 }
 
 function loop(){
-    // Background image
-const bgImg = new Image();
-bgImg.src = "bg.jpeg"; // name of your background image
+  // Draw background first
+  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawStartButton(); update(); drawPipes(); drawBird(); drawDeathEffect();
-  drawScore(); drawRestartButton(); frame++;
+  drawStartButton();
+  update();
+  drawPipes();
+  drawBird();
+  drawDeathEffect();
+  drawScore();
+  drawRestartButton();
+  frame++;
   requestAnimationFrame(loop);
-
 }
 loop();
 
@@ -245,10 +267,7 @@ if('serviceWorker' in navigator){
     .then(()=>console.log('Service Worker registered'))
     .catch(err=>console.log('Service Worker failed:', err));
 }
-
 </script>
+
 </body>
 </html>
-
-
-
