@@ -229,6 +229,10 @@ function loop(){
   drawStartButton(); update(); drawPipes(); drawBird(); drawDeathEffect();
   drawScore(); drawRestartButton(); frame++;
   requestAnimationFrame(loop);
+  // Background image
+const bgImg = new Image();
+bgImg.src = "bg.png"; // name of your background image
+
 }
 loop();
 
@@ -244,3 +248,4 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
