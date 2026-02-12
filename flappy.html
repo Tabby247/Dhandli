@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dhandli Flappy</title>
 
-  <!-- ===============================
-       🔧 PWA MANIFEST
-       This must be in <head> for PWABuilder to detect your app
-  =============================== -->
   <link rel="manifest" href="manifest.json">
 
   <style>
@@ -21,25 +17,19 @@
 <canvas id="game" width="400" height="800"></canvas>
 
 <script>
-/* ================================
-   🔧 SERVICE WORKER REGISTRATION
-   Ensures offline caching works
-================================ */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('pwabuilder-sw.js')
     .then(() => console.log('Service Worker registered'))
     .catch(err => console.log('Service Worker failed:', err));
 }
 
-/* ================================
-   🔧 SETTINGS (EDIT HERE)
-================================ */
+/* SETTINGS */
 
 // Bird settings
-const BIRD_WIDTH = 60;     // Bird width in px
-const BIRD_HEIGHT = 40;    // Bird height in px
-const BIRD_GRAVITY = 0.6;  // Gravity applied to bird
-const BIRD_LIFT = -10;     // Upward velocity when flap
+const BIRD_WIDTH = 60;
+const BIRD_HEIGHT = 40;
+const BIRD_GRAVITY = 0.6;
+const BIRD_LIFT = -10;
 
 // Pipe settings
 const PIPE_WIDTH = 60;
@@ -47,10 +37,10 @@ const PIPE_GAP = 170;
 const PIPE_SPEED = 3;
 
 // Hitbox padding
-const HITBOX_PADDING = 10; // bigger = easier collision
+const HITBOX_PADDING = 10;
 
 // Score text
-const SCORE_FONT_SIZE = 30; // font size in px
+const SCORE_FONT_SIZE = 30;
 
 // Start button
 const START_BTN_WIDTH = 220;
@@ -63,14 +53,14 @@ const RESTART_BTN_HEIGHT = 60;
 const RESTART_BTN_FONT = 22;
 
 // Death animation
-const DEATH_MAX_SCALE = 5;       // how big bird grows
-const DEATH_GROW_SPEED = 0.08;   // speed of growth
-const DEATH_SHAKE_AMOUNT = 8;    // shake amount
-const DEATH_SHAKE_SPEED = 0.4;   // shake speed
-const DEATH_TEXT_SCALE = 0.15;   // relative to bird size
-const DEATH_TEXT_OFFSET = 90;    // distance below bird for text
+const DEATH_MAX_SCALE = 5;
+const DEATH_GROW_SPEED = 0.08;
+const DEATH_SHAKE_AMOUNT = 8;
+const DEATH_SHAKE_SPEED = 0.4;
+const DEATH_TEXT_SCALE = 0.15;
+const DEATH_TEXT_OFFSET = 90;
 
-/* ================================ */
+/* GAME SETUP */
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -92,18 +82,16 @@ let gameOver = false;
 let gameStarted = false;
 let deathFrame = 0;
 
-/* ================================
-   🔧 IMAGES
-================================ */
+/* IMAGES */
+
 const birdImg = new Image();
-birdImg.src = "bird.png"; // Make sure exact filename
+birdImg.src = "bird.png";
 
 const pipeImg = new Image();
-pipeImg.src = "pipe.png"; // Make sure exact filename
+pipeImg.src = "pipe.png";
 
-/* ================================
-   🔧 BUTTONS
-================================ */
+/* BUTTONS */
+
 const startButton = {
   x: canvas.width/2 - START_BTN_WIDTH/2,
   y: 260,
@@ -118,9 +106,7 @@ const restartButton = {
   height: RESTART_BTN_HEIGHT
 };
 
-/* ================================
-   🔧 FUNCTIONS
-================================ */
+/* FUNCTIONS */
 
 function restart() {
   bird.y = 250;
@@ -173,12 +159,18 @@ function drawRestartButton() {
 function updatePipes() {
   if (frame % 100 === 0) {
     let top = Math.random() * 250 + 50;
-    pipes.push({ x: canvas.width, top: top, bottom: top + PIPE_GAP });
+    pipes.push({
+      x: canvas.width,
+      top: top,
+      bottom: top + PIPE_GAP,
+      passed: false   // FIX: required for scoring
+    });
   }
 
   pipes.forEach(pipe => {
     pipe.x -= PIPE_SPEED;
 
+    // Collision
     if (
       bird.x + HITBOX_PADDING < pipe.x + PIPE_WIDTH &&
       bird.x + bird.width - HITBOX_PADDING > pipe.x &&
@@ -187,7 +179,11 @@ function updatePipes() {
       gameOver = true;
     }
 
-    if (pipe.x + PIPE_SPEED === bird.x) score++;
+    // FIXED SCORING
+    if (!pipe.passed && pipe.x + PIPE_WIDTH < bird.x) {
+      pipe.passed = true;
+      score++;
+    }
   });
 
   pipes = pipes.filter(p => p.x > -PIPE_WIDTH);
@@ -214,11 +210,9 @@ function drawDeathEffect() {
 
   deathFrame++;
 
-  // Red overlay
   ctx.fillStyle = "rgba(255,0,0,0.25)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Grow + shake bird
   let scale = Math.min(1 + deathFrame * DEATH_GROW_SPEED, DEATH_MAX_SCALE);
   let bw = bird.width * scale;
   let bh = bird.height * scale;
@@ -232,13 +226,11 @@ function drawDeathEffect() {
   ctx.save();
   ctx.drawImage(birdImg, bx, by, bw, bh);
 
-  // Red tint on bird
   ctx.fillStyle = "rgba(255,0,0,0.5)";
   ctx.globalCompositeOperation = "source-atop";
   ctx.fillRect(bx, by, bw, bh);
   ctx.restore();
 
-  // Death text below bird
   ctx.fillStyle = "black";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
@@ -251,14 +243,13 @@ function drawDeathEffect() {
   );
 }
 
-/* ================================
-   🔧 INPUT HANDLING
-================================ */
+/* INPUT */
+
 canvas.addEventListener("pointerdown", handleInput);
 
 document.addEventListener("keydown", function(e){
   if(e.code === "Space"){
-    e.preventDefault(); // prevent page scroll
+    e.preventDefault();
 
     if(!gameStarted){
       gameStarted = true;
@@ -304,9 +295,8 @@ function handleInput(e){
   bird.velocity = bird.lift;
 }
 
-/* ================================
-   🔧 GAME UPDATE & LOOP
-================================ */
+/* LOOP */
+
 function update(){
   if(!gameStarted || gameOver) return;
 
@@ -334,12 +324,6 @@ function loop(){
 }
 
 loop();
-
 </script>
 </body>
 </html>
-
-
-
-
-
