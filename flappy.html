@@ -363,14 +363,6 @@ document.addEventListener("keydown", function(e){
       return;
     }
 
-    // If game over → go back to start screen
-    if (gameOver) {
-      resetGame();
-      gameStarted = false;
-      countdownActive = false;
-      return;
-    }
-
     // During countdown → do nothing
     if (countdownActive) return;
 
@@ -386,4 +378,5 @@ loop();
 </script>
 </body>
 </html>
+
 
