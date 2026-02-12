@@ -350,9 +350,40 @@ function loop() {
   frame++;
   requestAnimationFrame(loop);
 }
+document.addEventListener("keydown", function(e){
+  if (e.code === "Space") {
 
+    e.preventDefault(); // prevent scrolling
+
+    // On start screen → start game + countdown
+    if (!gameStarted) {
+      resetGame();
+      gameStarted = true;
+      startCountdown();
+      return;
+    }
+
+    // If game over → go back to start screen
+    if (gameOver) {
+      resetGame();
+      gameStarted = false;
+      countdownActive = false;
+      return;
+    }
+
+    // During countdown → do nothing
+    if (countdownActive) return;
+
+    // Playing → flap
+    bird.velocity = LIFT;
+  }
+});
+
+
+  
 loop();
 
 </script>
 </body>
 </html>
+
