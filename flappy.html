@@ -14,16 +14,50 @@ canvas { display:block; margin:auto; background:#70c5ce; }
 
 <script>
 
-/* ================= SETTINGS ================= */
+/* ===================== EDIT ZONE ===================== */
+/* Change values here to adjust size / fonts / placement */
 
+/* Bird */
 const BIRD_WIDTH = 60;
 const BIRD_HEIGHT = 40;
+
+/* Physics */
 const GRAVITY = 0.6;
 const LIFT = -10;
 
+/* Pipes */
 const PIPE_WIDTH = 60;
 const PIPE_GAP = 170;
 const PIPE_SPEED = 3;
+
+/* Score text */
+const SCORE_FONT = 30;
+const SCORE_Y = 40;
+
+/* Countdown */
+const COUNTDOWN_FONT = 120;
+
+/* Start Button */
+const START_BTN_WIDTH = 220;
+const START_BTN_HEIGHT = 70;
+const START_BTN_FONT = 26;
+const START_BTN_Y = 300;
+
+/* Restart Button */
+const RESTART_BTN_WIDTH = 180;
+const RESTART_BTN_HEIGHT = 60;
+const RESTART_BTN_FONT = 22;
+const RESTART_BTN_Y = 500;
+
+/* Death Animation */
+const DEATH_MAX_SCALE = 5;
+const DEATH_GROW_SPEED = 0.08;
+const DEATH_SHAKE_AMOUNT = 8;
+const DEATH_SHAKE_SPEED = 0.4;
+const DEATH_TEXT_SCALE = 0.15;
+const DEATH_TEXT_OFFSET = 90;
+
+/* ===================================================== */
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -48,6 +82,7 @@ let gameOver = false;
 let countdown = 3;
 let countdownActive = false;
 let countdownStart = 0;
+let deathFrame = 0;
 
 /* ================= IMAGES ================= */
 
@@ -60,17 +95,17 @@ pipeImg.src = "pipe.png";
 /* ================= BUTTONS ================= */
 
 const startButton = {
-  x: canvas.width/2 - 110,
-  y: 300,
-  width: 220,
-  height: 70
+  x: canvas.width/2 - START_BTN_WIDTH/2,
+  y: START_BTN_Y,
+  width: START_BTN_WIDTH,
+  height: START_BTN_HEIGHT
 };
 
 const restartButton = {
-  x: canvas.width/2 - 90,
-  y: 500,
-  width: 180,
-  height: 60
+  x: canvas.width/2 - RESTART_BTN_WIDTH/2,
+  y: RESTART_BTN_Y,
+  width: RESTART_BTN_WIDTH,
+  height: RESTART_BTN_HEIGHT
 };
 
 /* ================= RESET ================= */
@@ -82,6 +117,7 @@ function resetGame() {
   frame = 0;
   score = 0;
   gameOver = false;
+  deathFrame = 0;
 }
 
 /* ================= COUNTDOWN ================= */
@@ -93,8 +129,6 @@ function startCountdown() {
 }
 
 function updateCountdown() {
-  if (!countdownActive) return;
-
   let elapsed = Math.floor((Date.now() - countdownStart) / 1000);
   countdown = 3 - elapsed;
 
@@ -146,12 +180,14 @@ function updatePipes() {
 
 function update() {
 
-  if (!gameStarted || gameOver) return;
+  if (!gameStarted) return;
 
   if (countdownActive) {
     updateCountdown();
     return;
   }
+
+  if (gameOver) return;
 
   bird.velocity += GRAVITY;
   bird.y += bird.velocity;
@@ -166,7 +202,9 @@ function update() {
 /* ================= DRAW ================= */
 
 function drawBird() {
-  ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+  if (!gameOver) {
+    ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+  }
 }
 
 function drawPipes() {
@@ -178,21 +216,31 @@ function drawPipes() {
 
 function drawScore() {
   ctx.fillStyle = "black";
-  ctx.font = "30px Arial";
+  ctx.font = SCORE_FONT + "px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Score: " + score, canvas.width/2, 40);
+  ctx.fillText("Score: " + score, canvas.width/2, SCORE_Y);
 }
 
-function drawStartScreen() {
+function drawCountdown() {
+  if (!countdownActive) return;
+
+  ctx.fillStyle = "black";
+  ctx.font = COUNTDOWN_FONT + "px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(countdown, canvas.width/2, canvas.height/2);
+}
+
+function drawStartButton() {
   if (!gameStarted) {
     ctx.fillStyle = "blue";
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
 
     ctx.fillStyle = "white";
-    ctx.font = "26px Arial";
+    ctx.font = START_BTN_FONT + "px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("START",
+    ctx.fillText("TABDEELI TIME",
       startButton.x + startButton.width/2,
       startButton.y + startButton.height/2
     );
@@ -205,40 +253,61 @@ function drawRestartButton() {
     ctx.fillRect(restartButton.x, restartButton.y, restartButton.width, restartButton.height);
 
     ctx.fillStyle = "white";
-    ctx.font = "22px Arial";
+    ctx.font = RESTART_BTN_FONT + "px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("RESTART",
+    ctx.fillText("DHANDLI TIME",
       restartButton.x + restartButton.width/2,
       restartButton.y + restartButton.height/2
     );
   }
 }
 
-function drawCountdown() {
-  if (!countdownActive) return;
+function drawDeathEffect() {
+
+  if (!gameOver) return;
+
+  deathFrame++;
+
+  ctx.fillStyle = "rgba(255,0,0,0.25)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let scale = Math.min(1 + deathFrame * DEATH_GROW_SPEED, DEATH_MAX_SCALE);
+  let bw = bird.width * scale;
+  let bh = bird.height * scale;
+
+  let shakeX = Math.sin(deathFrame * DEATH_SHAKE_SPEED) * DEATH_SHAKE_AMOUNT;
+  let shakeY = Math.cos(deathFrame * DEATH_SHAKE_SPEED) * (DEATH_SHAKE_AMOUNT * 0.5);
+
+  let bx = canvas.width/2 - bw/2 + shakeX;
+  let by = canvas.height/2 - bh/2 + shakeY;
+
+  ctx.save();
+  ctx.drawImage(birdImg, bx, by, bw, bh);
+
+  ctx.fillStyle = "rgba(255,0,0,0.5)";
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.restore();
 
   ctx.fillStyle = "black";
-  ctx.font = "120px Arial";
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(countdown, canvas.width/2, canvas.height/2);
+  ctx.font = (bh * DEATH_TEXT_SCALE) + "px Arial";
+  ctx.fillText("MIJHAY KYUH NIKALA", bx + bw/2, by + bh + DEATH_TEXT_OFFSET);
 }
 
 /* ================= INPUT ================= */
 
-canvas.addEventListener("pointerdown", function(e) {
+canvas.addEventListener("pointerdown", function(e){
 
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  // Start button
   if (!gameStarted) {
-    if (
-      x >= startButton.x && x <= startButton.x + startButton.width &&
-      y >= startButton.y && y <= startButton.y + startButton.height
-    ) {
+    if (x >= startButton.x && x <= startButton.x + startButton.width &&
+        y >= startButton.y && y <= startButton.y + startButton.height) {
+
       resetGame();
       gameStarted = true;
       startCountdown();
@@ -246,12 +315,10 @@ canvas.addEventListener("pointerdown", function(e) {
     return;
   }
 
-  // Restart button → go back to start screen
   if (gameOver) {
-    if (
-      x >= restartButton.x && x <= restartButton.x + restartButton.width &&
-      y >= restartButton.y && y <= restartButton.y + restartButton.height
-    ) {
+    if (x >= restartButton.x && x <= restartButton.x + restartButton.width &&
+        y >= restartButton.y && y <= restartButton.y + restartButton.height) {
+
       resetGame();
       gameStarted = false;
       countdownActive = false;
@@ -259,7 +326,6 @@ canvas.addEventListener("pointerdown", function(e) {
     return;
   }
 
-  // Jump
   if (!countdownActive) {
     bird.velocity = LIFT;
   }
@@ -277,7 +343,8 @@ function loop() {
   drawBird();
   drawScore();
   drawCountdown();
-  drawStartScreen();
+  drawDeathEffect();
+  drawStartButton();
   drawRestartButton();
 
   frame++;
